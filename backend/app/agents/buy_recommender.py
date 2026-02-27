@@ -101,8 +101,8 @@ class BuyRecommenderAgent:
         # 통합 점수 계산 + 단타 조건 필터 + 임계값 적용
         candidates = []
         for ticker, tech_score in top20:
-            news_data = news_results.get(ticker, {"news_score": 50.0, "reasoning": "", "news_available": False})
-            news_score = news_data.get("news_score", 50.0)
+            news_data = news_results.get(ticker, {"news_score": 45.0, "reasoning": "", "news_available": False})
+            news_score = news_data.get("news_score", 45.0)
             news_available = news_data.get("news_available", False)
             combined_score = calculate_combined_score(tech_score, news_score)
 
@@ -144,13 +144,10 @@ class BuyRecommenderAgent:
                 "threshold_used": f"{'단타' if scalp_ok else ('정상' if news_available else '폴백')}({effective_threshold}점)",
             })
 
-        # 단타 추천 우선, 없으면 일반 매수 추천, 통합점수 기준 상위 3개
-        top3 = sorted(
-            candidates,
-            key=lambda x: (x["strategy"] == "SCALP", x["combined_score"]),
-            reverse=True
-        )[:3]
-        buy_count = sum(1 for c in top3 if c["signal"] in ("단타 매수 추천", "매수 추천"))
+        # 매수 신호 종목만 (관망 제외), 통합점수 기준 상위 3개
+        buy_candidates = [c for c in candidates if c["signal"] != "관망"]
+        top3 = sorted(buy_candidates, key=lambda x: x["combined_score"], reverse=True)[:3]
+        buy_count = len(top3)
         scalp_count = sum(1 for c in top3 if c["strategy"] == "SCALP")
         logger.info(f"Top 3 매수 추천 완료: {[c['ticker'] for c in top3]} | 매수신호: {buy_count}개 (단타: {scalp_count}개)")
 

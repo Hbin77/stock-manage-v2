@@ -77,8 +77,8 @@ def _rsi_score(rsi: Optional[float]) -> float:
     if rsi is None:
         return 12.5
     if rsi < 30:
-        # 극단 과매도 구간: 범위 초과 방지를 위해 min(25.0, ...) 캡 적용
-        return min(25.0, 18.0 + min(7.0, rsi * 0.23))  # RSI=0→18, RSI=30→25로 연속 수렴
+        # 극단 과매도 구간: RSI=0→25점, RSI=30→18점 선형 감소 (30-40 구간과 연속)
+        return 18.0 + (30.0 - rsi) / 30.0 * 7.0
     elif rsi < 40:
         return 18.0 + (rsi - 30) * 0.5         # 30→18, 40→23
     elif rsi < 50:

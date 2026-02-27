@@ -141,11 +141,11 @@ class PortfolioManagerAgent:
         포트폴리오 매도 신호 심층 분석
 
         단타 포지션 (is_scalp_trade=True):
-          1. 타임스톱: 5거래일 경과 시 청산
-          2. 트레일링 스톱: 고점 -1% 이탈 시 청산
-          3. 브레이크이븐 스톱: +1.5% 후 매수가 이탈 시 청산
-          4. 단타 손절: -2% 이탈
-          5. 단타 익절: +3% 달성
+          1. 단타 손절: -2% 이탈 (최우선 — 손실 방어)
+          2. 단타 익절: +3% 달성 (목표 즉시 확정)
+          3. 트레일링 스톱: 고점 -1% 이탈 시 청산 (이익 보호)
+          4. 브레이크이븐 스톱: +1.5% 후 매수가 이탈 시 청산 (원금 보호)
+          5. 타임스톱: 5거래일 경과 시 청산 (최후 안전장치)
 
         스윙 포지션 (is_scalp_trade=False):
           1. P&L 손절: pnl <= -5%
@@ -404,7 +404,7 @@ class PortfolioManagerAgent:
                         )
                     )
                 )
-                if dup_check.scalar_one_or_none():
+                if dup_check.scalars().first():
                     logger.info(
                         f"[{ticker}] 중복 신호 skip: {signal_type} "
                         f"(최근 24h 내 동일 신호 존재)"
