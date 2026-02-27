@@ -1,6 +1,19 @@
 version: "3.9"
 
+# ────────────────────────────────────────────────────────────────────
+# NAS 24시간 프로덕션 구성 (기본 docker-compose.yml)
+#
+# 접속:  http://NAS_IP:8085
+# 시작:  docker-compose up -d --build
+# 중지:  docker-compose down
+# 로그:  docker-compose logs -f
+#
+# 로컬 개발:  docker-compose -f docker-compose.dev.yml up -d
+# ────────────────────────────────────────────────────────────────────
+
 services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: stock-postgres
@@ -10,52 +23,73 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # 외부 포트 미노출 (내부 네트워크만 허용)
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stock} -d ${POSTGRES_DB:-stockdb}"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 20s
+    restart: always
     networks:
       - stock_network
+    mem_limit: 512m
 
+  # ── Redis ─────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: stock-redis
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: always
     networks:
       - stock_network
+    mem_limit: 300m
 
+  # ── FastAPI 백엔드 ─────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: stock-backend
     env_file: .env
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    restart: unless-stopped
+    # 프로덕션: --reload 없이 실행 + 워커 2개
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/market-status')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: always
     networks:
       - stock_network
+    mem_limit: 1g
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
+  # ── Celery Worker ─────────────────────────────────────────────────
   celery_worker:
     build:
       context: ./backend
@@ -67,13 +101,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
-    restart: unless-stopped
+    command: celery -A app.tasks.celery_app worker --loglevel=warning --concurrency=2
+    restart: always
     networks:
       - stock_network
+    mem_limit: 512m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
+  # ── Celery Beat (스케줄러) ─────────────────────────────────────────
   celery_beat:
     build:
       context: ./backend
@@ -83,28 +122,61 @@ services:
     depends_on:
       - redis
       - celery_worker
-    volumes:
-      - ./backend:/app
-    command: celery -A app.tasks.celery_app beat --loglevel=info
-    restart: unless-stopped
+    command: celery -A app.tasks.celery_app beat --loglevel=warning
+    restart: always
     networks:
       - stock_network
+    mem_limit: 256m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
+  # ── Next.js 프론트엔드 (프로덕션 빌드) ────────────────────────────
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
+      args:
+        # nginx가 /api/* 처리하므로 빈 문자열 (relative URL)
+        NEXT_PUBLIC_API_URL: ""
     container_name: stock-frontend
-    env_file: .env
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     depends_on:
-      - backend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-    restart: unless-stopped
+      backend:
+        condition: service_healthy
+    restart: always
     networks:
       - stock_network
+    mem_limit: 512m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ── Nginx 리버스 프록시 (외부 진입점 8085) ────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: stock-nginx
+    ports:
+      - "8085:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+    networks:
+      - stock_network
+    mem_limit: 128m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
 volumes:
   postgres_data:
