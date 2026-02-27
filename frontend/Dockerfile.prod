@@ -12,6 +12,9 @@ RUN npm install
 
 COPY . .
 
+# public 폴더가 없으면 생성 (Next.js standalone 빌드 필요)
+RUN mkdir -p public
+
 # NAS URL은 빌드 시 주입 (nginx가 같은 포트에서 API도 서빙하므로 동일 origin)
 # NAS에서는 nginx가 /api/* 라우팅 → 빈 문자열로 relative URL 사용
 ARG NEXT_PUBLIC_API_URL=""
