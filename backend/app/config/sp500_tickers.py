@@ -57,8 +57,8 @@ SP500_TICKERS = [
     "NET", "SNOW", "MDB", "OKTA", "TWLO",
     # 핀테크/크립토
     "COIN", "HOOD", "SOFI", "NU", "AFRM",
-    # 미래기술 (우주/EV/양자컴퓨팅)
-    "RKLB", "RIVN", "IONQ",
+    # 미래기술 (우주/양자컴퓨팅/eVTOL/소셜AI)
+    "RKLB", "IONQ", "JOBY", "RDDT",
     # 글로벌 대형주 (NASDAQ/NYSE 상장)
-    "TSM", "ASML", "SHOP", "MELI", "SPOT", "NVO", "PDD",
+    "TSM", "ASML", "SHOP", "MELI", "SPOT", "NVO", "BABA",
 ]
