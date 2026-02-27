@@ -12,7 +12,7 @@ export function useSSE() {
   const [lastEvent, setLastEvent] = useState<SSEEvent | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
   useEffect(() => {
     const connect = () => {

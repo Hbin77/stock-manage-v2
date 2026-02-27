@@ -1,6 +1,6 @@
-// 빈 문자열: nginx가 /api/* 프록시 (NAS 프로덕션)
-// URL 지정: 해당 주소로 직접 요청 (로컬 개발)
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// 빈 문자열: nginx가 /api/* 프록시 (NAS 프로덕션) or next.config.ts rewrite (로컬 개발)
+// URL 지정: 해당 주소로 직접 요청 (로컬 개발 명시)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
