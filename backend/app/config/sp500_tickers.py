@@ -50,5 +50,7 @@ SP500_TICKERS = [
     "UPS", "URI", "UNH", "UHS", "VLO", "VTR", "VLTO", "VRSN", "VRSK", "VZ",
     "VRTX", "VTRS", "VICI", "V", "VST", "VMC", "WRB", "GWW", "WAB", "WBA",
     "WMT", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST", "WDC",
-    "WY", "WHR", "WMB", "WTW", "WYNN", "XEL", "XYL", "YUM", "ZBRA", "ZBH", "ZTS"
+    "WY", "WHR", "WMB", "WTW", "WYNN", "XEL", "XYL", "YUM", "ZBRA", "ZBH", "ZTS",
+    # NASDAQ 100 추가 종목
+    "PLTR", "APP", "ARM", "MRVL", "DASH", "DDOG", "WDAY", "ZS", "ADP", "ALNY"
 ]

@@ -44,6 +44,9 @@ def _signal_color(signal_type: str) -> str:
         "STOP_LOSS": "#e53e3e",
         "TAKE_PROFIT": "#38a169",
         "SELL": "#dd6b20",
+        "TIME_STOP": "#805ad5",
+        "TRAILING_STOP": "#3182ce",
+        "BREAKEVEN_STOP": "#d69e2e",
     }.get(signal_type, "#718096")
 
 
@@ -59,6 +62,8 @@ def _build_html_body(signals: list[dict]) -> str:
         color = _signal_color(s.get("signal_type", ""))
         pnl = s.get("pnl_pct", 0.0)
         pnl_color = _pnl_color(pnl)
+        strategy = "단타" if s.get("is_scalp_trade") else "스윙"
+        strategy_color = "#805ad5" if s.get("is_scalp_trade") else "#2b6cb0"
         tech_signals_html = ""
         for ts in s.get("tech_signals", [])[:3]:
             tech_signals_html += f'<li style="margin:2px 0; color:#4a5568;">{ts}</li>'
@@ -74,6 +79,8 @@ def _build_html_body(signals: list[dict]) -> str:
                 <div>
                     <span style="font-size:22px; font-weight:700; color:#1a202c;">{s.get('ticker')}</span>
                     <span style="margin-left:8px; color:#718096; font-size:14px;">{s.get('name','')}</span>
+                    <span style="margin-left:8px; background:{strategy_color}; color:#fff; padding:2px 8px;
+                                 border-radius:4px; font-size:11px; font-weight:600;">{strategy}</span>
                 </div>
                 <span style="background:{color}; color:#fff; padding:4px 12px;
                              border-radius:20px; font-size:13px; font-weight:600;">
