@@ -33,15 +33,41 @@ async def get_sell_signals():
 
 @router.post("/sell-signals/test-email", summary="이메일 알림 테스트 발송")
 async def test_email_notification():
-    """테스트용 샘플 매도 신호 이메일을 발송합니다."""
-    from app.services.email_service import send_sell_signal_email
+    """테스트용 샘플 매도 신호 이메일을 발송합니다. 단계별 오류 메시지 포함."""
+    import smtplib
     from app.config.settings import settings
 
-    if not all([settings.EMAIL_USER, settings.EMAIL_APP_PASSWORD, settings.NOTIFICATION_EMAIL]):
+    if not settings.EMAIL_USER:
+        return {"success": False, "message": "EMAIL_USER 미설정. .env 파일을 확인하세요."}
+    if not settings.EMAIL_APP_PASSWORD:
+        return {"success": False, "message": "EMAIL_APP_PASSWORD 미설정. Gmail 앱 비밀번호(16자리)를 설정하세요."}
+    if not settings.NOTIFICATION_EMAIL:
+        return {"success": False, "message": "NOTIFICATION_EMAIL 미설정. 수신할 이메일 주소를 설정하세요."}
+
+    # 1단계: SMTP 연결 및 인증 테스트 (상세 오류 반환)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(settings.EMAIL_USER, settings.EMAIL_APP_PASSWORD)
+    except smtplib.SMTPAuthenticationError:
         return {
             "success": False,
-            "message": "이메일 설정 미완료. .env 파일에 EMAIL_USER / EMAIL_APP_PASSWORD / NOTIFICATION_EMAIL을 설정하세요.",
+            "message": (
+                f"Gmail 인증 실패 ({settings.EMAIL_USER}). "
+                "① Google 계정 → 보안 → 2단계 인증 활성화 확인 "
+                "② 앱 비밀번호(16자리) 재생성 후 EMAIL_APP_PASSWORD 업데이트 필요"
+            ),
         }
+    except smtplib.SMTPConnectError as e:
+        return {"success": False, "message": f"SMTP 서버 연결 실패: {e}"}
+    except TimeoutError:
+        return {"success": False, "message": "SMTP 연결 타임아웃. 네트워크 또는 방화벽을 확인하세요."}
+    except Exception as e:
+        return {"success": False, "message": f"연결 오류: {type(e).__name__}: {e}"}
+
+    # 2단계: 테스트 이메일 발송
+    from app.services.email_service import send_sell_signal_email
 
     test_signal = [{
         "ticker": "TEST",
