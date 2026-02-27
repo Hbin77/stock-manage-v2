@@ -157,7 +157,7 @@ class PortfolioManagerAgent:
         """
         holdings = await self.get_holdings()
         if not holdings:
-            return []
+            return {"sell_signals": [], "hold_analysis": []}
 
         holdings = await self.update_prices(holdings)
         tickers = [h["ticker"] for h in holdings]
@@ -274,9 +274,10 @@ class PortfolioManagerAgent:
                     # 보유 유지: 이유 수집
                     if not signal_type:
                         trail_str = f"${trailing_stop_price:.2f}" if trailing_stop_price else "-"
+                        peak_fmt = f"${peak_price:.2f}" if peak_price else "-"
                         logger.info(
                             f"[{ticker}] 단타 보유유지 | pnl={pnl_pct:+.2f}% | "
-                            f"peak=${peak_price:.2f if peak_price else 0} | "
+                            f"peak={peak_fmt} | "
                             f"trail={trail_str} | days={trading_days_held}"
                         )
                         hold_reasons = [f"수익률 {pnl_pct:+.2f}% — 손절 {settings.SCALP_STOP_LOSS_PCT}%/익절 +{settings.SCALP_TAKE_PROFIT_PCT}% 범위 내"]

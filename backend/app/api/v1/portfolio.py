@@ -1,4 +1,5 @@
 """포트폴리오 API 라우터"""
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -16,13 +17,36 @@ _orchestrator = OrchestratorAgent()
 
 @router.get("/portfolio", summary="포트폴리오 보유 현황")
 async def get_portfolio(db: AsyncSession = Depends(get_db)):
-    """현재 포트폴리오 보유 종목 목록 반환"""
+    """현재 포트폴리오 보유 종목 목록 반환 (현재가 실시간 조회)"""
     result = await db.execute(
         select(PortfolioHolding, Stock)
         .join(Stock, PortfolioHolding.stock_id == Stock.id)
     )
+    rows = result.fetchall()
+    if not rows:
+        return {"holdings": [], "count": 0}
+
+    # 현재가 병렬 조회
+    tickers = [stock.ticker for _, stock in rows]
+    prices_raw = await asyncio.gather(
+        *[fetch_current_price(t) for t in tickers],
+        return_exceptions=True
+    )
+
     holdings = []
-    for holding, stock in result.fetchall():
+    for (holding, stock), price_raw in zip(rows, prices_raw):
+        # 실시간 현재가 우선, 실패 시 DB 값 사용
+        if price_raw and not isinstance(price_raw, Exception):
+            current_price = float(price_raw)
+            avg_buy = holding.avg_buy_price
+            qty = holding.quantity
+            unrealized_pnl = round((current_price - avg_buy) * qty, 2)
+            unrealized_pnl_pct = round((current_price - avg_buy) / avg_buy * 100, 2) if avg_buy else 0.0
+        else:
+            current_price = holding.current_price
+            unrealized_pnl = holding.unrealized_pnl
+            unrealized_pnl_pct = holding.unrealized_pnl_pct
+
         holdings.append({
             "id": holding.id,
             "ticker": stock.ticker,
@@ -31,9 +55,9 @@ async def get_portfolio(db: AsyncSession = Depends(get_db)):
             "quantity": holding.quantity,
             "avg_buy_price": holding.avg_buy_price,
             "total_invested": holding.total_invested,
-            "current_price": holding.current_price,
-            "unrealized_pnl": holding.unrealized_pnl,
-            "unrealized_pnl_pct": holding.unrealized_pnl_pct,
+            "current_price": current_price,
+            "unrealized_pnl": unrealized_pnl,
+            "unrealized_pnl_pct": unrealized_pnl_pct,
             "first_bought_at": holding.first_bought_at.isoformat() if holding.first_bought_at else None,
             "last_updated_at": holding.last_updated_at.isoformat() if holding.last_updated_at else None,
             "is_scalp_trade": getattr(holding, "is_scalp_trade", False),
