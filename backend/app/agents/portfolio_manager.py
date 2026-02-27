@@ -407,35 +407,8 @@ class PortfolioManagerAgent:
                 if dup_check.scalars().first():
                     logger.info(
                         f"[{ticker}] 중복 신호 skip: {signal_type} "
-                        f"(최근 24h 내 동일 신호 존재)"
+                        f"(최근 24h 내 동일 신호 존재 — DB/이메일/UI 모두 skip)"
                     )
-                    # API 응답에는 포함 (UI 표시용), DB 저장/이메일은 skip
-                    sell_signals.append({
-                        "ticker": ticker,
-                        "name": holding["name"],
-                        "signal_type": signal_type,
-                        "signal": {
-                            "STOP_LOSS": "손절매", "TAKE_PROFIT": "익절매",
-                            "SELL": "매도 권고", "TIME_STOP": "타임스톱",
-                            "TRAILING_STOP": "트레일링스톱", "BREAKEVEN_STOP": "브레이크이븐",
-                        }.get(signal_type, "매도"),
-                        "combined_score": round(combined_score, 2),
-                        "tech_score": round(tech_score, 2),
-                        "news_sell_score": round(news_sell_score, 2),
-                        "pnl_pct": round(pnl_pct, 2),
-                        "current_price": current_price,
-                        "avg_buy_price": avg_buy_price,
-                        "peak_price": holding.get("peak_price"),
-                        "trailing_stop_price": holding.get("trailing_stop_price"),
-                        "trading_days_held": holding.get("trading_days_held", 0),
-                        "is_scalp_trade": is_scalp,
-                        "reasoning": " | ".join(signal_reasons[:4]),
-                        "tech_signals": [s["description"] for s in bearish.get("signals", [])],
-                        "news_action": news_data.get("action", ""),
-                        "news_risk_factors": news_data.get("risk_factors", []),
-                        "news_reasoning": news_data.get("reasoning", ""),
-                        "is_duplicate": True,
-                    })
                     continue
 
                 # ── 매도 신호 저장 ────────────────────────────────────
