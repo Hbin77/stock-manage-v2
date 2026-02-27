@@ -52,5 +52,13 @@ SP500_TICKERS = [
     "WMT", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST", "WDC",
     "WY", "WHR", "WMB", "WTW", "WYNN", "XEL", "XYL", "YUM", "ZBRA", "ZBH", "ZTS",
     # NASDAQ 100 추가 종목
-    "PLTR", "APP", "ARM", "MRVL", "DASH", "DDOG", "WDAY", "ZS", "ADP", "ALNY"
+    "PLTR", "APP", "ARM", "MRVL", "DASH", "DDOG", "WDAY", "ZS", "ADP", "ALNY",
+    # AI/클라우드/사이버보안
+    "NET", "SNOW", "MDB", "OKTA", "TWLO",
+    # 핀테크/크립토
+    "COIN", "HOOD", "SOFI", "NU", "AFRM",
+    # 미래기술 (우주/EV/양자컴퓨팅)
+    "RKLB", "RIVN", "IONQ",
+    # 글로벌 대형주 (NASDAQ/NYSE 상장)
+    "TSM", "ASML", "SHOP", "MELI", "SPOT", "NVO", "PDD",
 ]
