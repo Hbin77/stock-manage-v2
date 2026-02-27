@@ -77,7 +77,8 @@ def _rsi_score(rsi: Optional[float]) -> float:
     if rsi is None:
         return 12.5
     if rsi < 30:
-        return 18.0 + min(10.0, rsi * 0.4)     # 0→0, 30→18 방향 (극단 과매도)
+        # 극단 과매도 구간: 범위 초과 방지를 위해 min(25.0, ...) 캡 적용
+        return min(25.0, 18.0 + min(7.0, rsi * 0.23))  # RSI=0→18, RSI=30→25로 연속 수렴
     elif rsi < 40:
         return 18.0 + (rsi - 30) * 0.5         # 30→18, 40→23
     elif rsi < 50:
@@ -327,13 +328,14 @@ def detect_bearish_signals(df: pd.DataFrame) -> dict:
                 "description": f"MA20 하향 이탈 (현재가 MA20 대비 -{pct:.1f}%) — 단기 추세 약화",
             })
 
-        # 4. MA50 하향 이탈 (중기 추세 전환, 더 심각) - 1% 기준
+        # 4. MA50 하향 이탈 (중기 추세 전환) - 1% 노이즈 필터, 3% 이상만 HIGH
         if ma50 and current_price < ma50 * 0.99:
             pct = (ma50 - current_price) / ma50 * 100
+            severity = "HIGH" if pct >= 3.0 else "MEDIUM"
             signals.append({
                 "type": "BELOW_MA50",
-                "severity": "HIGH",
-                "description": f"MA50 하향 이탈 (현재가 MA50 대비 -{pct:.1f}%) — 중기 추세 전환 확인",
+                "severity": severity,
+                "description": f"MA50 하향 이탈 (현재가 MA50 대비 -{pct:.1f}%) — {'중기 추세 전환 확인' if severity == 'HIGH' else '중기 추세 약화'}",
             })
 
         # 5. MA50/MA200 데스 크로스 (장기 하락세)

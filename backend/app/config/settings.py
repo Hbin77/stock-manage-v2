@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     SCALP_VOLUME_MULTIPLIER: float = 1.3      # 거래량 확인 배율
 
     # ─── 스윙 매도 신호 임계값 ────────────────────────────────────────
-    SWING_NEWS_COMBINED_THRESHOLD: float = 55.0   # HIGH 신호 + 뉴스 sell_score 이상 시 매도
+    SWING_NEWS_COMBINED_THRESHOLD: float = 60.0   # HIGH 신호 + 뉴스 sell_score 이상 시 매도 (55→60, 노이즈 감소)
     SWING_NEWS_ALONE_THRESHOLD: float = 70.0      # 뉴스 단독 매도 sell_score 기준
 
     # 이메일 알림

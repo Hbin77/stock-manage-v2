@@ -1,8 +1,8 @@
 """포트폴리오 관리 에이전트 - 단타 트레일링/타임스톱 + 기술적/뉴스 심층 분석"""
 import asyncio
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from app.database.connection import AsyncSessionLocal
 from app.database.models import PortfolioHolding, Stock, SellSignal
 from app.agents.technical_analyst import TechnicalAnalystAgent
@@ -225,16 +225,23 @@ class PortfolioManagerAgent:
                     breakeven_locked = holding.get("breakeven_locked", False)
                     trading_days_held = holding.get("trading_days_held", 0)
 
-                    # 1. 타임스톱: 보유 5거래일 이상
-                    if trading_days_held >= settings.SCALP_MAX_HOLDING_DAYS:
-                        signal_type = "TIME_STOP"
+                    # 1. 단타 손절 -2% (최우선 — 손실 방어)
+                    if pnl_pct <= settings.SCALP_STOP_LOSS_PCT:
+                        signal_type = "STOP_LOSS"
                         signal_reasons.append(
-                            f"타임스톱: {trading_days_held}거래일 보유 "
-                            f"(최대 {settings.SCALP_MAX_HOLDING_DAYS}일) | "
-                            f"현재 수익률 {pnl_pct:+.2f}%"
+                            f"단타 손절: {pnl_pct:.2f}% (기준 {settings.SCALP_STOP_LOSS_PCT}%)"
+                        )
+                        if high_signals:
+                            signal_reasons.append(high_signals[0]["description"])
+
+                    # 2. 단타 익절 +3% (목표 달성 즉시 확정)
+                    if not signal_type and pnl_pct >= settings.SCALP_TAKE_PROFIT_PCT:
+                        signal_type = "TAKE_PROFIT"
+                        signal_reasons.append(
+                            f"단타 익절: +{pnl_pct:.2f}% 달성 (목표 +{settings.SCALP_TAKE_PROFIT_PCT}%)"
                         )
 
-                    # 2. 트레일링 스톱 (고점 -1% 이탈)
+                    # 3. 트레일링 스톱 (고점 -1% 이탈 — 이익 보호)
                     if not signal_type and trailing_stop_active and trailing_stop_price and current_price:
                         if current_price <= trailing_stop_price:
                             signal_type = "TRAILING_STOP"
@@ -245,7 +252,7 @@ class PortfolioManagerAgent:
                                 f"(고점 {peak_str} 대비 -1%) | 수익 확정"
                             )
 
-                    # 3. 브레이크이븐 스톱 (매수가 이탈)
+                    # 4. 브레이크이븐 스톱 (매수가 이탈 — 원금 보호)
                     if not signal_type and breakeven_locked and trailing_stop_price and current_price:
                         if not trailing_stop_active and current_price <= trailing_stop_price:
                             signal_type = "BREAKEVEN_STOP"
@@ -255,20 +262,13 @@ class PortfolioManagerAgent:
                                 f"(+1.5% 이상 달성 후 원점 복귀 — 손실 방지)"
                             )
 
-                    # 4. 단타 손절 -2%
-                    if not signal_type and pnl_pct <= settings.SCALP_STOP_LOSS_PCT:
-                        signal_type = "STOP_LOSS"
+                    # 5. 타임스톱: 보유 5거래일 이상 (최후 안전장치)
+                    if not signal_type and trading_days_held >= settings.SCALP_MAX_HOLDING_DAYS:
+                        signal_type = "TIME_STOP"
                         signal_reasons.append(
-                            f"단타 손절: {pnl_pct:.2f}% (기준 {settings.SCALP_STOP_LOSS_PCT}%)"
-                        )
-                        if high_signals:
-                            signal_reasons.append(high_signals[0]["description"])
-
-                    # 5. 단타 익절 +3%
-                    if not signal_type and pnl_pct >= settings.SCALP_TAKE_PROFIT_PCT:
-                        signal_type = "TAKE_PROFIT"
-                        signal_reasons.append(
-                            f"단타 익절: +{pnl_pct:.2f}% 달성 (목표 +{settings.SCALP_TAKE_PROFIT_PCT}%)"
+                            f"타임스톱: {trading_days_held}거래일 보유 "
+                            f"(최대 {settings.SCALP_MAX_HOLDING_DAYS}일) | "
+                            f"현재 수익률 {pnl_pct:+.2f}%"
                         )
 
                     # 보유 유지: 이유 수집
@@ -392,6 +392,51 @@ class PortfolioManagerAgent:
                             "tech_signals": [s["description"] for s in bearish.get("signals", [])],
                         })
                         continue
+
+                # ── 매도 신호 중복 방지 (24시간 내 동일 종목+신호 skip) ──
+                cutoff_24h = datetime.utcnow() - timedelta(hours=24)
+                dup_check = await session.execute(
+                    select(SellSignal).where(
+                        and_(
+                            SellSignal.stock_id == holding["stock_id"],
+                            SellSignal.signal_type == signal_type,
+                            SellSignal.signal_at >= cutoff_24h,
+                        )
+                    )
+                )
+                if dup_check.scalar_one_or_none():
+                    logger.info(
+                        f"[{ticker}] 중복 신호 skip: {signal_type} "
+                        f"(최근 24h 내 동일 신호 존재)"
+                    )
+                    # API 응답에는 포함 (UI 표시용), DB 저장/이메일은 skip
+                    sell_signals.append({
+                        "ticker": ticker,
+                        "name": holding["name"],
+                        "signal_type": signal_type,
+                        "signal": {
+                            "STOP_LOSS": "손절매", "TAKE_PROFIT": "익절매",
+                            "SELL": "매도 권고", "TIME_STOP": "타임스톱",
+                            "TRAILING_STOP": "트레일링스톱", "BREAKEVEN_STOP": "브레이크이븐",
+                        }.get(signal_type, "매도"),
+                        "combined_score": round(combined_score, 2),
+                        "tech_score": round(tech_score, 2),
+                        "news_sell_score": round(news_sell_score, 2),
+                        "pnl_pct": round(pnl_pct, 2),
+                        "current_price": current_price,
+                        "avg_buy_price": avg_buy_price,
+                        "peak_price": holding.get("peak_price"),
+                        "trailing_stop_price": holding.get("trailing_stop_price"),
+                        "trading_days_held": holding.get("trading_days_held", 0),
+                        "is_scalp_trade": is_scalp,
+                        "reasoning": " | ".join(signal_reasons[:4]),
+                        "tech_signals": [s["description"] for s in bearish.get("signals", [])],
+                        "news_action": news_data.get("action", ""),
+                        "news_risk_factors": news_data.get("risk_factors", []),
+                        "news_reasoning": news_data.get("reasoning", ""),
+                        "is_duplicate": True,
+                    })
+                    continue
 
                 # ── 매도 신호 저장 ────────────────────────────────────
                 signal_text = {
