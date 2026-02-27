@@ -83,6 +83,8 @@ export default function SellSignalsPage() {
   const [loading, setLoading] = useState(false);
   const [lastAnalyzed, setLastAnalyzed] = useState<string | null>(null);
   const [analyzed, setAnalyzed] = useState(false);
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // SSE 자동 업데이트
   useEffect(() => {
@@ -114,6 +116,19 @@ export default function SellSignalsPage() {
     }
   };
 
+  const testEmail = async () => {
+    setEmailTesting(true);
+    setEmailResult(null);
+    try {
+      const res = await api.testEmail() as { success: boolean; message: string };
+      setEmailResult(res);
+    } catch (e: any) {
+      setEmailResult({ success: false, message: e.message || "요청 실패" });
+    } finally {
+      setEmailTesting(false);
+    }
+  };
+
   const allItems = signals.length + holdAnalysis.length;
 
   return (
@@ -126,11 +141,19 @@ export default function SellSignalsPage() {
             포트폴리오 종목별 보유/매도 판단 및 이유 (10분마다 자동 실행)
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className={`flex items-center gap-2 text-sm ${isConnected ? "text-green-400" : "text-gray-500"}`}>
             <span className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-400 animate-pulse" : "bg-gray-500"}`} />
             {isConnected ? "자동 감지 중" : "연결 끊김"}
           </div>
+          <button
+            onClick={testEmail}
+            disabled={emailTesting}
+            className="rounded-xl border border-gray-600 bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-300
+                       hover:bg-gray-700 hover:text-white disabled:opacity-50 transition-colors"
+          >
+            {emailTesting ? "발송 중..." : "📧 이메일 테스트"}
+          </button>
           <button
             onClick={analyze}
             disabled={loading}
@@ -141,6 +164,17 @@ export default function SellSignalsPage() {
           </button>
         </div>
       </div>
+
+      {emailResult && (
+        <div className={`flex items-center justify-between rounded-xl border px-5 py-3 text-sm ${
+          emailResult.success
+            ? "border-green-700 bg-green-900/20 text-green-300"
+            : "border-red-700 bg-red-900/20 text-red-300"
+        }`}>
+          <span>{emailResult.success ? "✅" : "❌"} {emailResult.message}</span>
+          <button onClick={() => setEmailResult(null)} className="ml-4 text-gray-500 hover:text-white">✕</button>
+        </div>
+      )}
 
       {lastAnalyzed && (
         <div className="flex items-center gap-2 text-sm text-gray-500">

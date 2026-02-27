@@ -27,4 +27,5 @@ export const api = {
   getMarketStatus: () => fetchAPI("/api/v1/market-status"),
   getTransactions: () => fetchAPI("/api/v1/portfolio/transactions"),
   getTickers: () => fetchAPI("/api/v1/tickers"),
+  testEmail: () => fetchAPI("/api/v1/sell-signals/test-email", { method: "POST" }),
 };
