@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     NEWS_API_KEY: str = ""
 
     # 점수 임계값
-    BUY_THRESHOLD: float = 70.0
-    # 뉴스 분석 불가 시 폴백 임계값 (tech 점수 ≥ 66.7 이면 통과)
-    # 계산: 0.6*tech + 0.4*50 ≥ 62 → tech ≥ 66.7
-    FALLBACK_BUY_THRESHOLD: float = 62.0
+    BUY_THRESHOLD: float = 65.0
+    # 뉴스 분석 불가 시 폴백 임계값 (news_score=45 기준)
+    # 계산: 0.6*tech + 0.4*45 ≥ 58 → tech ≥ 63.3
+    FALLBACK_BUY_THRESHOLD: float = 58.0
     SELL_THRESHOLD: float = 40.0
     STOP_LOSS_PCT: float = -5.0
     TAKE_PROFIT_PCT: float = 15.0
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     SCALP_TRAIL_TRIGGER_PCT: float = 2.0      # +2% 달성 시 트레일링 스톱 시작
     SCALP_TRAIL_PCT: float = 1.0              # 트레일: 고점 대비 -1% 유지
     SCALP_MAX_HOLDING_DAYS: int = 5           # 최대 보유 거래일 (타임스톱)
-    SCALP_BUY_THRESHOLD: float = 75.0         # 단타 매수 임계값 (기존 70→75)
+    SCALP_BUY_THRESHOLD: float = 72.0         # 단타 매수 임계값 (75→72)
     SCALP_RSI_MIN: float = 45.0               # RSI 허용 최솟값
     SCALP_RSI_MAX: float = 68.0               # RSI 허용 최댓값
     SCALP_VOLUME_MULTIPLIER: float = 1.3      # 거래량 확인 배율
