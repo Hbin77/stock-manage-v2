@@ -62,3 +62,12 @@ SP500_TICKERS = [
     # 글로벌 대형주 (NASDAQ/NYSE 상장)
     "TSM", "ASML", "SHOP", "MELI", "SPOT", "NVO", "BABA",
 ]
+
+# 카테고리별 추가 종목 (UI 표시용)
+TICKER_EXTRA_GROUPS = {
+    "NASDAQ 100": ["PLTR", "APP", "ARM", "MRVL", "DASH", "DDOG", "WDAY", "ZS", "ADP", "ALNY"],
+    "AI/클라우드/사이버보안": ["NET", "SNOW", "MDB", "OKTA", "TWLO"],
+    "핀테크/크립토": ["COIN", "HOOD", "SOFI", "NU", "AFRM"],
+    "미래기술": ["RKLB", "IONQ", "JOBY", "RDDT"],
+    "글로벌 대형주": ["TSM", "ASML", "SHOP", "MELI", "SPOT", "NVO", "BABA"],
+}

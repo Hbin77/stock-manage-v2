@@ -26,4 +26,5 @@ export const api = {
   getStockScore: (ticker: string) => fetchAPI(`/api/v1/scores/${ticker}`),
   getMarketStatus: () => fetchAPI("/api/v1/market-status"),
   getTransactions: () => fetchAPI("/api/v1/portfolio/transactions"),
+  getTickers: () => fetchAPI("/api/v1/tickers"),
 };

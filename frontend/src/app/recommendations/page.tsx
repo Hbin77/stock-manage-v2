@@ -1,8 +1,119 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { formatScore, getScoreColor, getScoreBgColor, getSentimentLabel } from "@/lib/utils";
 import type { RecommendationResponse, RecommendationItem } from "@/types";
+
+interface TickerData {
+  total: number;
+  sp500_count: number;
+  extra_count: number;
+  sp500_tickers: string[];
+  extra_groups: Record<string, string[]>;
+}
+
+const GROUP_COLORS: Record<string, string> = {
+  "NASDAQ 100": "bg-purple-900/40 text-purple-300 border-purple-700/50",
+  "AI/클라우드/사이버보안": "bg-blue-900/40 text-blue-300 border-blue-700/50",
+  "핀테크/크립토": "bg-yellow-900/40 text-yellow-300 border-yellow-700/50",
+  "미래기술": "bg-green-900/40 text-green-300 border-green-700/50",
+  "글로벌 대형주": "bg-red-900/40 text-red-300 border-red-700/50",
+};
+
+function TickerPanel() {
+  const [data, setData] = useState<TickerData | null>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    api.getTickers().then((d) => setData(d as TickerData)).catch(() => {});
+  }, []);
+
+  const filtered = search.trim().toUpperCase();
+  const matchesSP500 = data?.sp500_tickers.filter((t) =>
+    !filtered || t.includes(filtered)
+  ) ?? [];
+  const matchedGroups = data
+    ? Object.entries(data.extra_groups).map(([name, tickers]) => ({
+        name,
+        tickers: tickers.filter((t) => !filtered || t.includes(filtered)),
+      })).filter((g) => g.tickers.length > 0)
+    : [];
+
+  return (
+    <div className="rounded-xl border border-gray-700 bg-gray-800/30">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-white">분석 대상 종목</span>
+          {data && (
+            <span className="rounded-full bg-gray-700 px-2.5 py-0.5 text-xs text-gray-300">
+              총 {data.total}개 (S&P500 {data.sp500_count} + 추가 {data.extra_count})
+            </span>
+          )}
+        </div>
+        <svg
+          className={`h-5 w-5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && data && (
+        <div className="border-t border-gray-700 px-5 pb-5 pt-4 space-y-4">
+          {/* 검색 */}
+          <input
+            type="text"
+            placeholder="티커 검색 (예: AAPL)"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-gray-600 bg-gray-900 px-4 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          />
+
+          {/* 추가 종목 그룹 */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">추가 편입 종목</p>
+            {matchedGroups.map(({ name, tickers }) => (
+              <div key={name}>
+                <p className="mb-1.5 text-xs font-medium text-gray-400">{name}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {tickers.map((t) => (
+                    <span
+                      key={t}
+                      className={`rounded border px-2 py-0.5 text-xs font-mono font-medium ${GROUP_COLORS[name] ?? "bg-gray-700 text-gray-300 border-gray-600"}`}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* S&P 500 기본 종목 */}
+          <div>
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-gray-500">
+              S&P 500 기본 편입 ({matchesSP500.length}개{filtered ? " 검색됨" : ""})
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {matchesSP500.map((t) => (
+                <span
+                  key={t}
+                  className="rounded bg-gray-700/60 px-1.5 py-0.5 text-xs font-mono text-gray-400"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
@@ -139,6 +250,9 @@ export default function RecommendationsPage() {
           )}
         </button>
       </div>
+
+      {/* 분석 종목 패널 */}
+      <TickerPanel />
 
       {/* 안내 박스 */}
       <div className="rounded-xl border border-blue-800 bg-blue-900/20 p-5">
