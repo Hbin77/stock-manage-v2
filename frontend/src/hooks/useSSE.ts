@@ -8,10 +8,15 @@ interface SSEEvent {
   count?: number;
 }
 
+const MAX_RETRIES = 10;
+const BASE_DELAY_MS = 2000;
+
 export function useSSE() {
   const [lastEvent, setLastEvent] = useState<SSEEvent | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
   useEffect(() => {
@@ -21,6 +26,7 @@ export function useSSE() {
 
       eventSource.onopen = () => {
         setIsConnected(true);
+        retryCountRef.current = 0;
       };
 
       eventSource.onmessage = (event) => {
@@ -35,14 +41,21 @@ export function useSSE() {
       eventSource.onerror = () => {
         setIsConnected(false);
         eventSource.close();
-        // 5초 후 재연결
-        setTimeout(connect, 5000);
+        if (retryCountRef.current >= MAX_RETRIES) {
+          console.warn("SSE 최대 재시도 횟수 초과. 재연결 중단.");
+          return;
+        }
+        // 지수 백오프: 2s, 4s, 8s, 16s, ... (최대 60s)
+        const delay = Math.min(60000, BASE_DELAY_MS * Math.pow(2, retryCountRef.current));
+        retryCountRef.current += 1;
+        retryTimerRef.current = setTimeout(connect, delay);
       };
     };
 
     connect();
 
     return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       eventSourceRef.current?.close();
     };
   }, [API_BASE]);

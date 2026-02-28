@@ -129,7 +129,8 @@ class PortfolioManagerAgent:
             if not is_market_open():
                 return
             last_updated = holding_obj.last_updated_at
-            today = datetime.utcnow().date()
+            from zoneinfo import ZoneInfo
+            today = datetime.now(ZoneInfo("America/New_York")).date()
             if last_updated is None or last_updated.date() < today:
                 holding_obj.trading_days_held = getattr(holding_obj, "trading_days_held", 0) + 1
                 holding_data["trading_days_held"] = holding_obj.trading_days_held

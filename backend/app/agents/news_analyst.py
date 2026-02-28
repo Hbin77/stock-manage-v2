@@ -254,7 +254,7 @@ class NewsAnalystAgent:
 def _fallback_result(reason: str) -> dict:
     """뉴스 분석 불가 시 반환 (news_available=False 플래그 포함)"""
     return {
-        "news_score": 50.0,
+        "news_score": 45.0,
         "sentiment": "중립",
         "key_catalysts": [],
         "reasoning": reason,

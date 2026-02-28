@@ -205,11 +205,9 @@ def calculate_tech_score(df: pd.DataFrame) -> float:
         )
 
         # ── 베어리시 신호 페널티 (점수-신호 연결) ─────────────────
-        # MACD 데드크로스: -8점
-        if macd_data["macd_prev"] >= macd_data["signal_prev"] and macd_data["macd"] < macd_data["signal"]:
-            score -= 8.0
         # MACD 약세 지속: 히스토그램 크기 비례 패널티 (최대 -6점)
-        elif macd_data["macd"] < macd_data["signal"]:
+        # 데드크로스는 _macd_score()에서 이미 저점수(3-8점) 처리 → 추가 패널티 없음
+        if macd_data["macd"] < macd_data["signal"]:
             signal_abs = abs(macd_data["signal"]) + 0.001
             hist_ratio = abs(macd_data["hist"]) / signal_abs
             score -= min(6.0, hist_ratio * 8.0)
@@ -476,7 +474,7 @@ def calculate_scalp_entry_score(df: pd.DataFrame) -> dict:
             try:
                 macd_ind = ta.trend.MACD(close=close, window_slow=26, window_fast=12, window_sign=9)
                 diffs = macd_ind.macd_diff()
-                if len(diffs) >= 3 and diffs.iloc[-2] > diffs.iloc[-3]:
+                if len(diffs) >= 3 and diffs.iloc[-1] > diffs.iloc[-2] and diffs.iloc[-2] > diffs.iloc[-3]:
                     macd_score = min(35.0, macd_score + 5.0)
             except Exception:
                 pass

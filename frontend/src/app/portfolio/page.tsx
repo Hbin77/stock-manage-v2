@@ -26,13 +26,26 @@ export default function PortfolioPage() {
 
   const handleBuy = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!buyForm.ticker || !buyForm.quantity || !buyForm.price) return;
+    const qty = parseFloat(buyForm.quantity);
+    const price = parseFloat(buyForm.price);
+    if (!buyForm.ticker.trim()) {
+      setMessage({ type: "error", text: "티커를 입력하세요." });
+      return;
+    }
+    if (!buyForm.quantity || isNaN(qty) || qty <= 0) {
+      setMessage({ type: "error", text: "수량은 0보다 커야 합니다." });
+      return;
+    }
+    if (!buyForm.price || isNaN(price) || price <= 0) {
+      setMessage({ type: "error", text: "매수가는 0보다 커야 합니다." });
+      return;
+    }
     setSubmitting(true);
     try {
       await api.buyStock({
         ticker: buyForm.ticker.toUpperCase(),
-        quantity: parseFloat(buyForm.quantity),
-        price: parseFloat(buyForm.price),
+        quantity: qty,
+        price: price,
         note: buyForm.note || undefined,
       });
       setMessage({ type: "success", text: `${buyForm.ticker.toUpperCase()} 매수 완료` });

@@ -122,6 +122,7 @@ export default function SellSignalsPage() {
     try {
       const res = await api.testEmail() as { success: boolean; message: string };
       setEmailResult(res);
+      if (res.success) setTimeout(() => setEmailResult(null), 5000);
     } catch (e: any) {
       setEmailResult({ success: false, message: e.message || "요청 실패" });
     } finally {
