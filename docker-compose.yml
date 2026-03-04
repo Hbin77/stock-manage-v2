@@ -101,7 +101,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.tasks.celery_app worker --loglevel=warning --concurrency=2
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
     restart: always
     networks:
       - stock_network
@@ -122,7 +122,7 @@ services:
     depends_on:
       - redis
       - celery_worker
-    command: celery -A app.tasks.celery_app beat --loglevel=warning
+    command: celery -A app.tasks.celery_app beat --loglevel=info
     restart: always
     networks:
       - stock_network
@@ -141,6 +141,7 @@ services:
       args:
         # nginx가 /api/* 처리하므로 빈 문자열 (relative URL)
         NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_SITE_PASSWORD: ${NEXT_PUBLIC_SITE_PASSWORD:-0000}
     container_name: stock-frontend
     expose:
       - "3000"

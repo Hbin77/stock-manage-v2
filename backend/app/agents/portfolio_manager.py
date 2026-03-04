@@ -217,7 +217,7 @@ class PortfolioManagerAgent:
                 signal_reasons = []
 
                 # ══════════════════════════════════════════════════
-                # 단타 포지션 전용 매도 로직
+                # 단타 포지션 매도 로직 (가격 + 기술/뉴스 점수)
                 # ══════════════════════════════════════════════════
                 if is_scalp:
                     peak_price = holding.get("peak_price")
@@ -272,14 +272,36 @@ class PortfolioManagerAgent:
                             f"현재 수익률 {pnl_pct:+.2f}%"
                         )
 
+                    # 6. 기술적 강매도: HIGH 베어리시 신호 2개 이상
+                    if not signal_type and len(high_signals) >= 2:
+                        signal_type = "SELL"
+                        signal_reasons.extend([s["description"] for s in high_signals[:2]])
+                        signal_reasons.append(f"기술점수 {tech_score:.1f}점")
+
+                    # 7. 기술+뉴스 복합 매도: HIGH 신호 + 뉴스 매도점수 높음
+                    if not signal_type and high_signals and news_sell_score >= settings.SWING_NEWS_COMBINED_THRESHOLD:
+                        signal_type = "SELL"
+                        signal_reasons.append(high_signals[0]["description"])
+                        signal_reasons.append(
+                            f"뉴스 매도 신호: {news_data.get('action','')} (sell_score {news_sell_score:.0f})"
+                        )
+
+                    # 8. 통합점수 급락: combined_score 매도 기준 미만
+                    if not signal_type and combined_score < settings.SELL_THRESHOLD:
+                        signal_type = "SELL"
+                        signal_reasons.append(
+                            f"통합점수 {combined_score:.1f}점 — 매도 기준({settings.SELL_THRESHOLD}점) 미만"
+                        )
+                        signal_reasons.append(f"기술 {tech_score:.1f}점 | 뉴스매도 {news_sell_score:.0f}점")
+
                     # 보유 유지: 이유 수집
                     if not signal_type:
                         trail_str = f"${trailing_stop_price:.2f}" if trailing_stop_price else "-"
                         peak_fmt = f"${peak_price:.2f}" if peak_price else "-"
                         logger.info(
                             f"[{ticker}] 단타 보유유지 | pnl={pnl_pct:+.2f}% | "
-                            f"peak={peak_fmt} | "
-                            f"trail={trail_str} | days={trading_days_held}"
+                            f"tech={tech_score:.1f} | combined={combined_score:.1f} | "
+                            f"peak={peak_fmt} | trail={trail_str} | days={trading_days_held}"
                         )
                         hold_reasons = [f"수익률 {pnl_pct:+.2f}% — 손절 {settings.SCALP_STOP_LOSS_PCT}%/익절 +{settings.SCALP_TAKE_PROFIT_PCT}% 범위 내"]
                         if breakeven_locked:
@@ -288,6 +310,8 @@ class PortfolioManagerAgent:
                             hold_reasons.append(f"트레일링 스톱 ${trailing_stop_price:.2f} 추적 중 (고점 대비 -1%)")
                         remaining = settings.SCALP_MAX_HOLDING_DAYS - trading_days_held
                         hold_reasons.append(f"잔여 보유기간 {remaining}거래일 (타임스톱까지)")
+                        if combined_score >= settings.SELL_THRESHOLD:
+                            hold_reasons.append(f"통합점수 {combined_score:.1f}점 — 매도 기준({settings.SELL_THRESHOLD}점) 이상")
                         if high_signals:
                             hold_reasons.append(f"기술 경고: {high_signals[0]['description']}")
                         hold_analysis.append({
@@ -300,6 +324,7 @@ class PortfolioManagerAgent:
                             "avg_buy_price": avg_buy_price,
                             "tech_score": round(tech_score, 2),
                             "news_sell_score": round(news_sell_score, 2),
+                            "combined_score": round(combined_score, 2),
                             "news_action": news_data.get("action", ""),
                             "hold_reasons": hold_reasons,
                             "tech_signals": [s["description"] for s in bearish.get("signals", [])],

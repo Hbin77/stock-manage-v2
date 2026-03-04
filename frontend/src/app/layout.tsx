@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import LockScreen from "@/components/LockScreen";
 
 export const metadata: Metadata = {
   title: "주식 추천 시스템",
@@ -14,30 +15,32 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="min-h-screen bg-gray-950 text-gray-100">
-        <nav className="border-b border-gray-800 bg-gray-900 px-6 py-4">
-          <div className="mx-auto flex max-w-7xl items-center justify-between">
-            <a href="/" className="text-xl font-bold text-blue-400">
-              주식 추천 시스템
-            </a>
-            <div className="flex gap-6 text-sm">
-              <a href="/" className="text-gray-300 hover:text-white transition-colors">
-                대시보드
+        <LockScreen>
+          <nav className="border-b border-gray-800 bg-gray-900 px-6 py-4">
+            <div className="mx-auto flex max-w-7xl items-center justify-between">
+              <a href="/" className="text-xl font-bold text-blue-400">
+                주식 추천 시스템
               </a>
-              <a href="/recommendations" className="text-gray-300 hover:text-white transition-colors">
-                매수 추천
-              </a>
-              <a href="/portfolio" className="text-gray-300 hover:text-white transition-colors">
-                포트폴리오
-              </a>
-              <a href="/sell-signals" className="text-gray-300 hover:text-white transition-colors">
-                매도 신호
-              </a>
+              <div className="flex gap-6 text-sm">
+                <a href="/" className="text-gray-300 hover:text-white transition-colors">
+                  대시보드
+                </a>
+                <a href="/recommendations" className="text-gray-300 hover:text-white transition-colors">
+                  매수 추천
+                </a>
+                <a href="/portfolio" className="text-gray-300 hover:text-white transition-colors">
+                  포트폴리오
+                </a>
+                <a href="/sell-signals" className="text-gray-300 hover:text-white transition-colors">
+                  매도 신호
+                </a>
+              </div>
             </div>
-          </div>
-        </nav>
-        <main className="mx-auto max-w-7xl px-6 py-8">
-          {children}
-        </main>
+          </nav>
+          <main className="mx-auto max-w-7xl px-6 py-8">
+            {children}
+          </main>
+        </LockScreen>
       </body>
     </html>
   );
